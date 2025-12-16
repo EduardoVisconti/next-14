@@ -12,15 +12,14 @@ export function useEquipmentList() {
 	});
 }
 
-export function useEquipmentById(id?: string, options?: any) {
+export function useEquipmentById(id?: string) {
 	return useQuery({
 		queryKey: ['equipment', id],
+		enabled: !!id,
 		queryFn: async () => {
 			const { data } = await api.get<Equipment>(`/equipment/${id}`);
 			return data;
-		},
-		enabled: !!id,
-		...options
+		}
 	});
 }
 
@@ -28,11 +27,9 @@ export function useCreateEquipment() {
 	const qc = useQueryClient();
 
 	return useMutation({
-		mutationFn: (payload: Omit<Equipment, 'id'>) =>
-			api.post('/equipment', payload),
-		onSuccess: () => {
-			qc.invalidateQueries({ queryKey: ['equipment'] });
-		}
+		mutationFn: async (data: Omit<Equipment, 'id'>) =>
+			api.post('/equipment', data),
+		onSuccess: () => qc.invalidateQueries({ queryKey: ['equipment'] })
 	});
 }
 
@@ -40,10 +37,11 @@ export function useUpdateEquipment(id: string) {
 	const qc = useQueryClient();
 
 	return useMutation({
-		mutationFn: (payload: Partial<Equipment>) =>
-			api.put(`/equipment/${id}`, payload),
+		mutationFn: async (data: Partial<Equipment>) =>
+			api.put(`/equipment/${id}`, data),
 		onSuccess: () => {
 			qc.invalidateQueries({ queryKey: ['equipment'] });
+			qc.invalidateQueries({ queryKey: ['equipment', id] });
 		}
 	});
 }

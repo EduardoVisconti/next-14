@@ -1,59 +1,78 @@
 'use client';
 
-import { useForm } from 'react-hook-form';
-import { useCreateEquipment, useUpdateEquipment } from '@/hooks/useEquipment';
-import { useRouter } from 'next/navigation';
+import {
+	useEquipmentById,
+	useCreateEquipment,
+	useUpdateEquipment
+} from '@/hooks/useEquipment';
+import { EquipmentStatus } from '@/types/equipment';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { useEffect, useState } from 'react';
 
-type Props = {
-	mode: 'add' | 'edit';
-	equipment?: any;
-};
-
-export function EquipmentForm({ mode, equipment }: Props) {
+export function EquipmentForm() {
 	const router = useRouter();
+	const params = useSearchParams();
 
-	const form = useForm({
-		defaultValues: {
-			name: equipment?.name || '',
-			status: equipment?.status || ''
+	const action = params.get('action'); // add | edit
+	const id = params.get('id');
+
+	const isEdit = action === 'edit';
+
+	const { data: equipment } = useEquipmentById(isEdit ? id! : undefined);
+	const createMutation = useCreateEquipment();
+	const updateMutation = useUpdateEquipment(id!);
+
+	const [name, setName] = useState('');
+	const [status, setStatus] = useState<EquipmentStatus>('active');
+
+	// 🔥 DEFAULT VALUES BASEADOS NA ACTION
+	useEffect(() => {
+		if (isEdit && equipment) {
+			setName(equipment.name || '');
+			setStatus(equipment.status || 'active');
 		}
-	});
+	}, [isEdit, equipment]);
 
-	const create = useCreateEquipment();
-	const update = useUpdateEquipment(equipment?.id);
+	function handleSubmit(e: React.FormEvent) {
+		e.preventDefault();
 
-	function onSubmit(data: any) {
-		if (mode === 'add') {
-			create.mutate(data, {
-				onSuccess: () => router.push('/equipment')
-			});
+		if (isEdit) {
+			updateMutation.mutate({ name, status });
+		} else {
+			createMutation.mutate({ name, status });
 		}
 
-		if (mode === 'edit') {
-			update.mutate(data, {
-				onSuccess: () => router.push('/equipment')
-			});
-		}
+		router.push('/equipment');
 	}
 
 	return (
 		<form
-			onSubmit={form.handleSubmit(onSubmit)}
-			className='space-y-4'
+			onSubmit={handleSubmit}
+			className='space-y-4 max-w-md'
 		>
-			<input
-				placeholder='Name'
-				{...form.register('name')}
-				className='border p-2 w-full'
-			/>
+			<h1 className='text-xl font-semibold'>
+				{isEdit ? 'Edit Equipment' : 'Add Equipment'}
+			</h1>
 
 			<input
-				placeholder='Status'
-				{...form.register('status')}
 				className='border p-2 w-full'
+				placeholder='Equipment name'
+				value={name}
+				onChange={(e) => setName(e.target.value)}
+				required
 			/>
 
-			<button className='px-4 py-2 bg-black text-white rounded'>Save</button>
+			<select
+				className='border p-2 w-full'
+				value={status}
+				onChange={(e) => setStatus(e.target.value as EquipmentStatus)}
+			>
+				<option value='active'>Active</option>
+				<option value='maintenance'>Maintenance</option>
+				<option value='inactive'>Inactive</option>
+			</select>
+
+			<button className='bg-black text-white px-4 py-2'>Save</button>
 		</form>
 	);
 }

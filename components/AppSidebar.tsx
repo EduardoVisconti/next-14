@@ -1,18 +1,39 @@
-'use client';
+"use client";
 
-import Link from 'next/link';
+import {
+  Sidebar,
+  SidebarContent,
+  SidebarHeader,
+  SidebarMenu,
+  SidebarMenuItem,
+  SidebarMenuButton,
+} from "@/components/ui/sidebar";
+import Link from "next/link";
 
 export function AppSidebar() {
-	return (
-		<aside className='w-64 border-r p-4'>
-			<nav className='flex flex-col gap-2'>
-				<Link
-					href='/equipment'
-					className='font-medium'
-				>
-					Equipment
-				</Link>
-			</nav>
-		</aside>
-	);
+  return (
+    <Sidebar>
+      <SidebarHeader className="p-4 font-semibold text-lg">
+        Equipment App
+      </SidebarHeader>
+
+      <SidebarContent>
+        <SidebarMenu>
+          <SidebarMenuItem>
+            <SidebarMenuButton asChild>
+              <Link href="/equipment">Equipment</Link>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+
+          <SidebarMenuItem>
+            <SidebarMenuButton asChild>
+              <Link href="/equipment/action?action=add">
+                Add Equipment
+              </Link>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+        </SidebarMenu>
+      </SidebarContent>
+    </Sidebar>
+  );
 }

@@ -3,61 +3,46 @@
 import {
 	useReactTable,
 	getCoreRowModel,
-	flexRender,
-	ColumnDef
+	flexRender
 } from '@tanstack/react-table';
-
-import {
-	Table,
-	TableBody,
-	TableCell,
-	TableHead,
-	TableHeader,
-	TableRow
-} from '@/components/ui/table';
-
-import { Equipment } from '@/types/equipment';
-
-interface Props {
-	columns: ColumnDef<Equipment>[];
-	data: Equipment[];
-}
-
-export function EquipmentTable({ columns, data }: Props) {
+import { equipmentColumns } from './equipmentColumns';
+export function EquipmentTable({ data }: { data: any[] }) {
 	const table = useReactTable({
 		data,
-		columns,
+		columns: equipmentColumns,
 		getCoreRowModel: getCoreRowModel()
 	});
 
 	return (
-		<Table>
-			<TableHeader>
-				{table.getHeaderGroups().map((group) => (
-					<TableRow key={group.id}>
-						{group.headers.map((header) => (
-							<TableHead key={header.id}>
-								{flexRender(
-									header.column.columnDef.header,
-									header.getContext()
-								)}
-							</TableHead>
+		<table className='border w-full'>
+			<thead>
+				{table.getHeaderGroups().map((g) => (
+					<tr key={g.id}>
+						{g.headers.map((h) => (
+							<th
+								key={h.id}
+								className='border p-2'
+							>
+								{flexRender(h.column.columnDef.header, h.getContext())}
+							</th>
 						))}
-					</TableRow>
+					</tr>
 				))}
-			</TableHeader>
-
-			<TableBody>
-				{table.getRowModel().rows.map((row) => (
-					<TableRow key={row.id}>
-						{row.getVisibleCells().map((cell) => (
-							<TableCell key={cell.id}>
-								{flexRender(cell.column.columnDef.cell, cell.getContext())}
-							</TableCell>
+			</thead>
+			<tbody>
+				{table.getRowModel().rows.map((r) => (
+					<tr key={r.id}>
+						{r.getVisibleCells().map((c) => (
+							<td
+								key={c.id}
+								className='border p-2'
+							>
+								{flexRender(c.column.columnDef.cell, c.getContext())}
+							</td>
 						))}
-					</TableRow>
+					</tr>
 				))}
-			</TableBody>
-		</Table>
+			</tbody>
+		</table>
 	);
 }
