@@ -1,24 +1,24 @@
 'use client';
 
-import { getEquipmentsList } from '@/data-access/equipments';
 import { useQuery } from '@tanstack/react-query';
+import { getEquipmentsList } from '@/data-access/equipments';
+import { Equipment } from '@/types/equipment';
+import { columns } from '../table/columns';
+import { DataTable } from '../table/data-table';
 
-const EquipmentsTableSection = () => {
-	const { data, isLoading, isError } = useQuery({
+export default function EquipmentsTableSection() {
+	const { data, isLoading, isError } = useQuery<Equipment[]>({
 		queryKey: ['equipments'],
 		queryFn: getEquipmentsList
 	});
 
-	if (isError) return <p>Azedou</p>;
-
-	if (isLoading) return <p>Loading ...</p>;
+	if (isLoading) return <p>Loading equipments...</p>;
+	if (isError) return <p>Error loading equipments</p>;
 
 	return (
-		<div>
-			<button onClick={() => getEquipmentsList()}>Click me</button>
-			<pre>{JSON.stringify(data, null, 2)}</pre>
-		</div>
+		<DataTable
+			columns={columns}
+			data={data ?? []}
+		/>
 	);
-};
-
-export default EquipmentsTableSection;
+}
