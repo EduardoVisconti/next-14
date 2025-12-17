@@ -21,9 +21,16 @@ import {
 export default function EquipmentsTableSection() {
 	const router = useRouter();
 	const queryClient = useQueryClient();
+	const [deletingId, setDeletingId] = useState<string | null>(null);
 
 	const deleteMutation = useMutation({
 		mutationFn: (id: string) => deleteEquipment(id),
+		onMutate: (id) => {
+			setDeletingId(id);
+		},
+		onSettled: () => {
+			setDeletingId(null);
+		},
 		onSuccess: () => {
 			queryClient.invalidateQueries({ queryKey: ['equipments'] });
 		}
@@ -31,7 +38,11 @@ export default function EquipmentsTableSection() {
 
 	const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
 
-	const { data = [] } = useQuery<Equipment[]>({
+	const {
+		data = [],
+		isLoading,
+		isFetching
+	} = useQuery<Equipment[]>({
 		queryKey: ['equipments'],
 		queryFn: getEquipmentsList
 	});
@@ -54,6 +65,7 @@ export default function EquipmentsTableSection() {
 			header: '',
 			cell: ({ row }) => {
 				const equipment = row.original;
+				const isDeleting = deletingId === equipment.id;
 
 				return (
 					<DropdownMenu>
@@ -66,11 +78,15 @@ export default function EquipmentsTableSection() {
 							</Button>
 						</DropdownMenuTrigger>
 						<DropdownMenuContent align='end'>
-							<DropdownMenuItem onClick={() => handleEdit(equipment)}>
+							<DropdownMenuItem
+								disabled={isDeleting}
+								onClick={() => handleEdit(equipment)}
+							>
 								Edit
 							</DropdownMenuItem>
 							<DropdownMenuItem
 								className='text-destructive'
+								disabled={isDeleting}
 								onClick={() => handleDelete(equipment)}
 							>
 								Delete
@@ -95,6 +111,11 @@ export default function EquipmentsTableSection() {
 					}
 					className='max-w-sm'
 				/>
+
+				{isFetching && (
+					<p className='text-xs text-muted-foreground'>Refreshing...</p>
+				)}
+
 				<Button onClick={() => router.push('/equipments/action?action=add')}>
 					Add equipment
 				</Button>

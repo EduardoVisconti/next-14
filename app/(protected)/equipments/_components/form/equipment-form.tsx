@@ -82,6 +82,9 @@ export default function EquipmentForm({
 		}
 	});
 
+	const isSaving =
+		action === 'add' ? createMutation.isPending : updateMutation.isPending;
+
 	async function onSubmit(values: EquipmentFormValues) {
 		if (action === 'add') {
 			createMutation.mutate({
@@ -124,6 +127,7 @@ export default function EquipmentForm({
 								<Input
 									{...field}
 									placeholder='Equipment name'
+									disabled={isSaving}
 								/>
 							</FormControl>
 							<FormMessage />
@@ -141,6 +145,7 @@ export default function EquipmentForm({
 							<FormControl>
 								<Input
 									{...field}
+									disabled={isSaving}
 									placeholder='Serial number'
 								/>
 							</FormControl>
@@ -161,7 +166,7 @@ export default function EquipmentForm({
 								defaultValue={field.value}
 							>
 								<FormControl>
-									<SelectTrigger>
+									<SelectTrigger disabled={isSaving}>
 										<SelectValue placeholder='Select status' />
 									</SelectTrigger>
 								</FormControl>
@@ -186,6 +191,7 @@ export default function EquipmentForm({
 							<FormControl>
 								<Input
 									type='date'
+									disabled={isSaving}
 									{...field}
 								/>
 							</FormControl>
@@ -204,6 +210,7 @@ export default function EquipmentForm({
 							<FormControl>
 								<Input
 									type='date'
+									disabled={isSaving}
 									{...field}
 								/>
 							</FormControl>
@@ -212,8 +219,17 @@ export default function EquipmentForm({
 					)}
 				/>
 
-				<Button type='submit'>
-					{action === 'add' ? 'Create Equipment' : 'Update Equipment'}
+				<Button
+					type='submit'
+					disabled={isSaving}
+				>
+					{isSaving
+						? action === 'add'
+							? 'Creating...'
+							: 'Updating...'
+						: action === 'add'
+						? 'Create Equipment'
+						: 'Update Equipment'}
 				</Button>
 			</form>
 		</Form>
