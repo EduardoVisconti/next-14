@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { createEquipment, updateEquipment } from '@/data-access/equipments';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 
 import { Equipment, EquipmentStatus } from '@/types/equipment';
 import { Button } from '@/components/ui/button';
@@ -51,6 +52,7 @@ export default function EquipmentForm({
 	equipment
 }: EquipmentFormProps) {
 	const router = useRouter();
+	const queryClient = useQueryClient();
 
 	const form = useForm<EquipmentFormValues>({
 		resolver: zodResolver(equipmentSchema),
@@ -63,9 +65,26 @@ export default function EquipmentForm({
 		}
 	});
 
+	const createMutation = useMutation({
+		mutationFn: createEquipment,
+		onSuccess: () => {
+			queryClient.invalidateQueries({ queryKey: ['equipments'] });
+			router.push('/equipments');
+		}
+	});
+
+	const updateMutation = useMutation({
+		mutationFn: ({ id, data }: { id: string; data: Omit<Equipment, 'id'> }) =>
+			updateEquipment(id, data),
+		onSuccess: () => {
+			queryClient.invalidateQueries({ queryKey: ['equipments'] });
+			router.push('/equipments');
+		}
+	});
+
 	async function onSubmit(values: EquipmentFormValues) {
 		if (action === 'add') {
-			await createEquipment({
+			createMutation.mutate({
 				name: values.name,
 				serialNumber: values.serialNumber,
 				status: values.status,
@@ -75,17 +94,17 @@ export default function EquipmentForm({
 		}
 
 		if (action === 'edit' && equipment?.id) {
-			await updateEquipment(equipment.id, {
-				name: values.name,
-				serialNumber: values.serialNumber,
-				status: values.status,
-				purchaseDate: values.purchaseDate,
-				lastServiceDate: values.lastServiceDate
+			updateMutation.mutate({
+				id: equipment.id,
+				data: {
+					name: values.name,
+					serialNumber: values.serialNumber,
+					status: values.status,
+					purchaseDate: values.purchaseDate,
+					lastServiceDate: values.lastServiceDate
+				}
 			});
 		}
-
-		router.push('/equipments');
-		router.refresh(); // garante refresh do mock/list em dev
 	}
 
 	return (

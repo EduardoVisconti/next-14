@@ -2,9 +2,11 @@
 
 import { useState } from 'react';
 import { ColumnDef, ColumnFiltersState } from '@tanstack/react-table';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
 import { MoreHorizontal } from 'lucide-react';
+import { deleteEquipment, getEquipmentsList } from '@/data-access/equipments';
+import { Equipment } from '@/types/equipment';
 
 import { DataTable } from '@/components/core/tables/data-table';
 import { Input } from '@/components/ui/input';
@@ -16,11 +18,17 @@ import {
 	DropdownMenuTrigger
 } from '@/components/ui/dropdown-menu';
 
-import { Equipment } from '@/types/equipment';
-import { getEquipmentsList } from '@/data-access/equipments';
-
 export default function EquipmentsTableSection() {
 	const router = useRouter();
+	const queryClient = useQueryClient();
+
+	const deleteMutation = useMutation({
+		mutationFn: (id: string) => deleteEquipment(id),
+		onSuccess: () => {
+			queryClient.invalidateQueries({ queryKey: ['equipments'] });
+		}
+	});
+
 	const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
 
 	const { data = [] } = useQuery<Equipment[]>({
@@ -33,8 +41,7 @@ export default function EquipmentsTableSection() {
 	};
 
 	const handleDelete = (equipment: Equipment) => {
-		// mock por enquanto
-		console.log('DELETE equipment:', equipment.id);
+		deleteMutation.mutate(equipment.id);
 	};
 
 	const columns: ColumnDef<Equipment>[] = [
@@ -42,7 +49,6 @@ export default function EquipmentsTableSection() {
 		{ accessorKey: 'serialNumber', header: 'Serial' },
 		{ accessorKey: 'status', header: 'Status' },
 
-		// 🔥 ACTIONS
 		{
 			id: 'actions',
 			header: '',

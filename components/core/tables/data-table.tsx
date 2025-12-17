@@ -25,7 +25,6 @@ interface DataTableProps<TData, TValue> {
 	columns: ColumnDef<TData, TValue>[];
 	data: TData[];
 
-	// 🔥 CONTROLE DE FILTRO (opcional e genérico)
 	columnFilters?: ColumnFiltersState;
 	onColumnFiltersChange?: (filters: ColumnFiltersState) => void;
 }
