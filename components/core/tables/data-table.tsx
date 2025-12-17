@@ -7,7 +7,8 @@ import {
 	getFilteredRowModel,
 	getPaginationRowModel,
 	getSortedRowModel,
-	useReactTable
+	useReactTable,
+	ColumnFiltersState
 } from '@tanstack/react-table';
 
 import {
@@ -23,15 +24,33 @@ import { Button } from '@/components/ui/button';
 interface DataTableProps<TData, TValue> {
 	columns: ColumnDef<TData, TValue>[];
 	data: TData[];
+
+	// 🔥 CONTROLE DE FILTRO (opcional e genérico)
+	columnFilters?: ColumnFiltersState;
+	onColumnFiltersChange?: (filters: ColumnFiltersState) => void;
 }
 
 export function DataTable<TData, TValue>({
 	columns,
-	data
+	data,
+	columnFilters,
+	onColumnFiltersChange
 }: DataTableProps<TData, TValue>) {
 	const table = useReactTable({
 		data,
 		columns,
+		state: {
+			columnFilters
+		},
+		onColumnFiltersChange: onColumnFiltersChange
+			? (updaterOrValue) => {
+					const newFilters =
+						typeof updaterOrValue === 'function'
+							? updaterOrValue(columnFilters || [])
+							: updaterOrValue;
+					onColumnFiltersChange(newFilters);
+			  }
+			: undefined,
 		getCoreRowModel: getCoreRowModel(),
 		getSortedRowModel: getSortedRowModel(),
 		getFilteredRowModel: getFilteredRowModel(),
