@@ -6,6 +6,7 @@ import NegoDoidoQueryCLientProvider from '@/components/providers/query-provider'
 import { useAuth } from '@/context/auth-context';
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
+import { CommandPalette } from '@/components/core/overlays/command-palette';
 
 const PrivateLayout = ({ children }: { children: React.ReactNode }) => {
 	const { user, loading } = useAuth();
@@ -31,7 +32,10 @@ const PrivateLayout = ({ children }: { children: React.ReactNode }) => {
 		<SidebarProvider>
 			<NegoDoidoQueryCLientProvider>
 				<AppSidebar />
-				<SidebarInset>{children}</SidebarInset>
+				<SidebarInset>
+					<CommandPalette />
+					{children}
+				</SidebarInset>
 			</NegoDoidoQueryCLientProvider>
 		</SidebarProvider>
 	);
