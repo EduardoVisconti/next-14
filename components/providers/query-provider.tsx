@@ -28,7 +28,7 @@ function getQueryClient() {
 	}
 }
 
-export default function NegoDoidoQueryCLientProvider({
+export default function EquipmentDashboardQueryClientProvider({
 	children
 }: Readonly<{
 	children: React.ReactNode;

@@ -148,10 +148,12 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 			<SidebarHeader className='h-[60px] border-b flex items-center justify-center'>
 				<Link href={'/dashboard'}>
 					{open ? (
-						<p className='text-base font-mono font-extrabold'>NEGO DOIDO</p>
+						<p className='text-base font-mono font-extrabold'>
+							Equipment Dashboard
+						</p>
 					) : (
 						<p className='bg-primary h-[20px] w-[20px] text-xs rounded-sm flex items-center justify-center text-background'>
-							ND
+							ED
 						</p>
 					)}
 				</Link>

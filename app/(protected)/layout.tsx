@@ -2,7 +2,7 @@
 
 import { AppSidebar } from '@/components/core/navigation/app-sidebar';
 import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar';
-import NegoDoidoQueryCLientProvider from '@/components/providers/query-provider';
+import EquipmentDashboardQueryClientProvider from '@/components/providers/query-provider';
 import { useAuth } from '@/context/auth-context';
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
@@ -30,13 +30,13 @@ const PrivateLayout = ({ children }: { children: React.ReactNode }) => {
 
 	return (
 		<SidebarProvider>
-			<NegoDoidoQueryCLientProvider>
+			<EquipmentDashboardQueryClientProvider>
 				<AppSidebar />
 				<SidebarInset>
 					<CommandPalette />
 					{children}
 				</SidebarInset>
-			</NegoDoidoQueryCLientProvider>
+			</EquipmentDashboardQueryClientProvider>
 		</SidebarProvider>
 	);
 };
