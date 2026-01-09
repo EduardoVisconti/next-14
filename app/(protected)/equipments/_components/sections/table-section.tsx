@@ -97,6 +97,10 @@ export default function EquipmentsTableSection() {
 		{
 			accessorKey: 'status',
 			header: 'Status',
+			// IMPORTANT: exact match (prevents "inactive" matching "active")
+			filterFn: (row, columnId, filterValue) => {
+				return row.getValue(columnId) === filterValue;
+			},
 			cell: ({ row }) => <StatusBadge status={row.original.status} />
 		},
 		{
@@ -108,6 +112,10 @@ export default function EquipmentsTableSection() {
 			cell: ({ row }) => {
 				const equipment = row.original;
 				const isDeleting = deletingId === equipment.id;
+
+				const handleEdit = (equipment: Equipment) => {
+					router.push(`/equipments/action?action=edit&id=${equipment.id}`);
+				};
 
 				return (
 					<DropdownMenu>
@@ -121,15 +129,20 @@ export default function EquipmentsTableSection() {
 						</DropdownMenuTrigger>
 						<DropdownMenuContent align='end'>
 							<DropdownMenuItem
-								disabled={isDeleting}
 								onClick={() => router.push(`/equipments/${equipment.id}`)}
+							>
+								View
+							</DropdownMenuItem>
+							<DropdownMenuItem
+								disabled={isDeleting}
+								onClick={() => handleEdit(equipment)}
 							>
 								Edit
 							</DropdownMenuItem>
 							<DropdownMenuItem
 								className='text-destructive'
 								disabled={isDeleting}
-								onClick={() => router.push(`/equipments/${equipment.id}`)}
+								onClick={() => setEquipmentToDelete(equipment)}
 							>
 								Delete
 							</DropdownMenuItem>
@@ -181,7 +194,13 @@ export default function EquipmentsTableSection() {
 
 					<Select
 						onValueChange={(value) =>
-							setColumnFilters(value === 'all' ? [] : [{ id: 'status', value }])
+							setColumnFilters((prev) => {
+								const next = prev.filter((f) => f.id !== 'status');
+
+								if (value === 'all') return next;
+
+								return [...next, { id: 'status', value }];
+							})
 						}
 					>
 						<SelectTrigger className='w-[160px]'>
