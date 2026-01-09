@@ -13,6 +13,7 @@ import { DataTable } from '@/components/core/tables/data-table';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Badge } from '@/components/ui/badge';
 import {
 	DropdownMenu,
 	DropdownMenuContent,
@@ -29,6 +30,30 @@ import {
 	AlertDialogCancel,
 	AlertDialogAction
 } from '@/components/ui/alert-dialog';
+import {
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue
+} from '@/components/ui/select';
+
+function StatusBadge({ status }: { status: Equipment['status'] }) {
+	const map = {
+		active: 'bg-green-100 text-green-700',
+		maintenance: 'bg-yellow-100 text-yellow-800',
+		inactive: 'bg-muted text-muted-foreground'
+	};
+
+	return (
+		<Badge
+			variant='outline'
+			className={map[status]}
+		>
+			{status}
+		</Badge>
+	);
+}
 
 export default function EquipmentsTableSection() {
 	const router = useRouter();
@@ -51,7 +76,7 @@ export default function EquipmentsTableSection() {
 		queryFn: getEquipmentsList
 	});
 
-	/* ---------------- MUTATIONS ---------------- */
+	/* ---------------- MUTATION ---------------- */
 
 	const deleteMutation = useMutation({
 		mutationFn: (id: string) => deleteEquipment(id),
@@ -59,25 +84,25 @@ export default function EquipmentsTableSection() {
 		onSettled: () => setDeletingId(null),
 		onSuccess: () => {
 			queryClient.invalidateQueries({ queryKey: ['equipments'] });
-			toast.success('Equipment deleted');
+			toast.success('Asset deleted');
 		},
-		onError: () => {
-			toast.error('Failed to delete equipment');
-		}
+		onError: () => toast.error('Failed to delete asset')
 	});
-
-	/* ---------------- HANDLERS ---------------- */
-
-	const handleEdit = (equipment: Equipment) => {
-		router.push(`/equipments/action?action=edit&id=${equipment.id}`);
-	};
 
 	/* ---------------- COLUMNS ---------------- */
 
 	const columns: ColumnDef<Equipment>[] = [
-		{ accessorKey: 'name', header: 'Name' },
+		{ accessorKey: 'name', header: 'Asset' },
 		{ accessorKey: 'serialNumber', header: 'Serial' },
-		{ accessorKey: 'status', header: 'Status' },
+		{
+			accessorKey: 'status',
+			header: 'Status',
+			cell: ({ row }) => <StatusBadge status={row.original.status} />
+		},
+		{
+			accessorKey: 'lastServiceDate',
+			header: 'Last Service'
+		},
 		{
 			id: 'actions',
 			cell: ({ row }) => {
@@ -97,7 +122,11 @@ export default function EquipmentsTableSection() {
 						<DropdownMenuContent align='end'>
 							<DropdownMenuItem
 								disabled={isDeleting}
-								onClick={() => handleEdit(equipment)}
+								onClick={() =>
+									router.push(
+										`/equipments/action?action=edit&id=${equipment.id}`
+									)
+								}
 							>
 								Edit
 							</DropdownMenuItem>
@@ -117,84 +146,86 @@ export default function EquipmentsTableSection() {
 
 	/* ---------------- SKELETON ---------------- */
 
-	const TableSkeleton = () => (
-		<div className='space-y-4'>
-			<div className='flex justify-between'>
-				<Skeleton className='h-10 w-64' />
-				<Skeleton className='h-10 w-32' />
-			</div>
-
-			<div className='rounded-md border'>
-				<div className='divide-y'>
+	if (isLoading) {
+		return (
+			<div className='space-y-4'>
+				<div className='flex justify-between'>
+					<Skeleton className='h-10 w-64' />
+					<Skeleton className='h-10 w-32' />
+				</div>
+				<div className='rounded-md border p-4 space-y-2'>
 					{Array.from({ length: 5 }).map((_, i) => (
-						<div
+						<Skeleton
 							key={i}
-							className='flex items-center gap-4 p-4'
-						>
-							<Skeleton className='h-4 w-1/4' />
-							<Skeleton className='h-4 w-1/4' />
-							<Skeleton className='h-4 w-24' />
-							<Skeleton className='ml-auto h-8 w-8 rounded-full' />
-						</div>
+							className='h-6'
+						/>
 					))}
 				</div>
 			</div>
-		</div>
-	);
-
-	/* ---------------- LOADING ---------------- */
-
-	if (isLoading) {
-		return <TableSkeleton />;
+		);
 	}
 
 	/* ---------------- RENDER ---------------- */
 
 	return (
 		<div className='space-y-4'>
-			<div className='flex justify-between items-center'>
-				<Input
-					placeholder='Filter by name...'
-					value={
-						(columnFilters.find((f) => f.id === 'name')?.value as string) ?? ''
-					}
-					onChange={(e) =>
-						setColumnFilters([{ id: 'name', value: e.target.value }])
-					}
-					className='max-w-sm'
-				/>
+			<div className='flex flex-wrap gap-4 items-center justify-between'>
+				<div className='flex gap-2'>
+					<Input
+						placeholder='Search assets...'
+						value={
+							(columnFilters.find((f) => f.id === 'name')?.value as string) ??
+							''
+						}
+						onChange={(e) =>
+							setColumnFilters([{ id: 'name', value: e.target.value }])
+						}
+						className='max-w-sm'
+					/>
 
-				{isFetching && (
-					<p className='text-xs text-muted-foreground'>Refreshing...</p>
-				)}
+					<Select
+						onValueChange={(value) =>
+							setColumnFilters(value === 'all' ? [] : [{ id: 'status', value }])
+						}
+					>
+						<SelectTrigger className='w-[160px]'>
+							<SelectValue placeholder='Status' />
+						</SelectTrigger>
+						<SelectContent>
+							<SelectItem value='all'>All</SelectItem>
+							<SelectItem value='active'>Active</SelectItem>
+							<SelectItem value='maintenance'>Maintenance</SelectItem>
+							<SelectItem value='inactive'>Inactive</SelectItem>
+						</SelectContent>
+					</Select>
+				</div>
 
 				<Button onClick={() => router.push('/equipments/action?action=add')}>
-					Add equipment
+					Add asset
 				</Button>
 			</div>
 
-			{data.length === 0 && (
+			{isFetching && (
+				<p className='text-xs text-muted-foreground'>Refreshing...</p>
+			)}
+
+			{data.length === 0 ? (
 				<div className='flex flex-col items-center justify-center rounded-lg border border-dashed p-10 text-center'>
 					<div className='flex h-12 w-12 items-center justify-center rounded-full bg-muted'>
 						<Package className='h-6 w-6 text-muted-foreground' />
 					</div>
-
-					<h3 className='mt-4 text-lg font-semibold'>No equipments found</h3>
-					<p className='mt-2 text-sm text-muted-foreground max-w-sm'>
-						You don&apos;t have any equipments yet. Create your first equipment
-						to start managing them here.
+					<h3 className='mt-4 text-lg font-semibold'>No assets found</h3>
+					<p className='mt-2 text-sm text-muted-foreground'>
+						Add your first asset to start managing operations.
 					</p>
-
 					<Button
 						className='mt-6'
 						onClick={() => router.push('/equipments/action?action=add')}
 					>
-						Add equipment
+						Add asset
 					</Button>
 				</div>
-			)}
-
-			{data.length > 0 && (
+			) : (
 				<DataTable
 					columns={columns}
 					data={data}
@@ -209,21 +240,16 @@ export default function EquipmentsTableSection() {
 			>
 				<AlertDialogContent>
 					<AlertDialogHeader>
-						<AlertDialogTitle>Delete equipment</AlertDialogTitle>
+						<AlertDialogTitle>Delete asset</AlertDialogTitle>
 						<AlertDialogDescription>
-							Are you sure you want to delete{' '}
-							<strong>{equipmentToDelete?.name}</strong>? This action cannot be
-							undone.
+							This will permanently delete{' '}
+							<strong>{equipmentToDelete?.name}</strong>.
 						</AlertDialogDescription>
 					</AlertDialogHeader>
-
 					<AlertDialogFooter>
-						<AlertDialogCancel disabled={deleteMutation.isPending}>
-							Cancel
-						</AlertDialogCancel>
+						<AlertDialogCancel>Cancel</AlertDialogCancel>
 						<AlertDialogAction
-							className='bg-destructive text-destructive-foreground hover:bg-destructive/90'
-							disabled={deleteMutation.isPending}
+							className='bg-destructive'
 							onClick={() => {
 								if (equipmentToDelete) {
 									deleteMutation.mutate(equipmentToDelete.id);
@@ -231,7 +257,7 @@ export default function EquipmentsTableSection() {
 								}
 							}}
 						>
-							{deleteMutation.isPending ? 'Deleting...' : 'Delete'}
+							Delete
 						</AlertDialogAction>
 					</AlertDialogFooter>
 				</AlertDialogContent>
