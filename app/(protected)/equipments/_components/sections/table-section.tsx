@@ -122,18 +122,14 @@ export default function EquipmentsTableSection() {
 						<DropdownMenuContent align='end'>
 							<DropdownMenuItem
 								disabled={isDeleting}
-								onClick={() =>
-									router.push(
-										`/equipments/action?action=edit&id=${equipment.id}`
-									)
-								}
+								onClick={() => router.push(`/equipments/${equipment.id}`)}
 							>
 								Edit
 							</DropdownMenuItem>
 							<DropdownMenuItem
 								className='text-destructive'
 								disabled={isDeleting}
-								onClick={() => setEquipmentToDelete(equipment)}
+								onClick={() => router.push(`/equipments/${equipment.id}`)}
 							>
 								Delete
 							</DropdownMenuItem>
