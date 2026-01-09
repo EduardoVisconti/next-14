@@ -1,12 +1,5 @@
 import { Equipment } from '@/types/equipment';
 import { db } from '@/lib/firebase';
-import {
-	listEquipments,
-	getEquipmentById as getById,
-	createEquipment as create,
-	updateEquipment as update,
-	deleteEquipment as remove
-} from './mock-db';
 
 import {
 	collection,
@@ -23,9 +16,9 @@ const equipmentsCollection = collection(db, 'equipments');
 export const getEquipmentsList = async (): Promise<Equipment[]> => {
 	const snapshot = await getDocs(equipmentsCollection);
 
-	return snapshot.docs.map((doc) => ({
-		id: doc.id,
-		...(doc.data() as Omit<Equipment, 'id'>)
+	return snapshot.docs.map((d) => ({
+		id: d.id,
+		...(d.data() as Omit<Equipment, 'id'>)
 	}));
 };
 

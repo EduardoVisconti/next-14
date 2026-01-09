@@ -8,7 +8,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 
-import { Equipment, EquipmentStatus } from '@/types/equipment';
+import { Equipment } from '@/types/equipment';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -41,7 +41,12 @@ const equipmentSchema = z.object({
 	serialNumber: z.string().min(1, 'Serial number is required'),
 	status: z.enum(['active', 'inactive', 'maintenance']),
 	purchaseDate: z.string().min(1, 'Purchase date is required'),
-	lastServiceDate: z.string().min(1, 'Last service date is required')
+	lastServiceDate: z.string().min(1, 'Last service date is required'),
+
+	// NEW
+	nextServiceDate: z.string().optional(),
+	location: z.string().optional(),
+	owner: z.string().optional()
 });
 
 type EquipmentFormValues = z.infer<typeof equipmentSchema>;
@@ -62,7 +67,11 @@ export default function EquipmentForm({
 			serialNumber: equipment?.serialNumber || '',
 			status: equipment?.status || 'active',
 			purchaseDate: equipment?.purchaseDate || '',
-			lastServiceDate: equipment?.lastServiceDate || ''
+			lastServiceDate: equipment?.lastServiceDate || '',
+
+			nextServiceDate: equipment?.nextServiceDate || '',
+			location: equipment?.location || '',
+			owner: equipment?.owner || ''
 		}
 	});
 
@@ -95,26 +104,30 @@ export default function EquipmentForm({
 		action === 'add' ? createMutation.isPending : updateMutation.isPending;
 
 	async function onSubmit(values: EquipmentFormValues) {
+		const payload: Omit<Equipment, 'id'> = {
+			name: values.name,
+			serialNumber: values.serialNumber,
+			status: values.status,
+			purchaseDate: values.purchaseDate,
+			lastServiceDate: values.lastServiceDate,
+
+			nextServiceDate: values.nextServiceDate?.trim() || '',
+			location: values.location?.trim() || '',
+			owner: values.owner?.trim() || ''
+		};
+
+		if (!payload.nextServiceDate) delete payload.nextServiceDate;
+		if (!payload.location) delete payload.location;
+		if (!payload.owner) delete payload.owner;
+
 		if (action === 'add') {
-			createMutation.mutate({
-				name: values.name,
-				serialNumber: values.serialNumber,
-				status: values.status,
-				purchaseDate: values.purchaseDate,
-				lastServiceDate: values.lastServiceDate
-			});
+			createMutation.mutate(payload);
 		}
 
 		if (action === 'edit' && equipment?.id) {
 			updateMutation.mutate({
 				id: equipment.id,
-				data: {
-					name: values.name,
-					serialNumber: values.serialNumber,
-					status: values.status,
-					purchaseDate: values.purchaseDate,
-					lastServiceDate: values.lastServiceDate
-				}
+				data: payload
 			});
 		}
 	}
@@ -135,7 +148,7 @@ export default function EquipmentForm({
 							<FormControl>
 								<Input
 									{...field}
-									placeholder='Equipment name'
+									placeholder='e.g. Forklift - Unit 12'
 									disabled={isSaving}
 								/>
 							</FormControl>
@@ -155,7 +168,7 @@ export default function EquipmentForm({
 								<Input
 									{...field}
 									disabled={isSaving}
-									placeholder='Serial number'
+									placeholder='e.g. FL-TPA-0012'
 								/>
 							</FormControl>
 							<FormMessage />
@@ -190,6 +203,44 @@ export default function EquipmentForm({
 					)}
 				/>
 
+				{/* OWNER */}
+				<FormField
+					control={form.control}
+					name='owner'
+					render={({ field }) => (
+						<FormItem>
+							<FormLabel>Owner</FormLabel>
+							<FormControl>
+								<Input
+									{...field}
+									disabled={isSaving}
+									placeholder='e.g. Operations Team'
+								/>
+							</FormControl>
+							<FormMessage />
+						</FormItem>
+					)}
+				/>
+
+				{/* LOCATION */}
+				<FormField
+					control={form.control}
+					name='location'
+					render={({ field }) => (
+						<FormItem>
+							<FormLabel>Location</FormLabel>
+							<FormControl>
+								<Input
+									{...field}
+									disabled={isSaving}
+									placeholder='e.g. Tampa DC'
+								/>
+							</FormControl>
+							<FormMessage />
+						</FormItem>
+					)}
+				/>
+
 				{/* PURCHASE DATE */}
 				<FormField
 					control={form.control}
@@ -216,6 +267,25 @@ export default function EquipmentForm({
 					render={({ field }) => (
 						<FormItem>
 							<FormLabel>Last Service Date</FormLabel>
+							<FormControl>
+								<Input
+									type='date'
+									disabled={isSaving}
+									{...field}
+								/>
+							</FormControl>
+							<FormMessage />
+						</FormItem>
+					)}
+				/>
+
+				{/* NEXT SERVICE DATE */}
+				<FormField
+					control={form.control}
+					name='nextServiceDate'
+					render={({ field }) => (
+						<FormItem>
+							<FormLabel>Next Service Date</FormLabel>
 							<FormControl>
 								<Input
 									type='date'
