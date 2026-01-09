@@ -1,5 +1,7 @@
 import EquipmentForm from '../_components/form/equipment-form';
+import PageHeader from '@/components/core/headers/page-header';
 import { getEquipmentById } from '@/data-access/equipments';
+import { Card, CardContent } from '@/components/ui/card';
 
 interface PageProps {
 	searchParams: {
@@ -16,14 +18,36 @@ export default async function EquipmentActionPage({ searchParams }: PageProps) {
 			? await getEquipmentById(searchParams.id)
 			: undefined;
 
-	return (
-		<section className='p-4 md:p-6'>
-			<div className='mx-auto w-full max-w-2xl'>
-				<EquipmentForm
-					action={action}
-					equipment={equipment}
+	if (action === 'edit' && !equipment) {
+		return (
+			<section className='p-4 md:p-6'>
+				<PageHeader
+					pageTitle='Asset not found'
+					pageDescription='The requested asset does not exist or was removed.'
 				/>
-			</div>
+			</section>
+		);
+	}
+
+	return (
+		<section>
+			<PageHeader
+				pageTitle={action === 'add' ? 'Add Asset' : 'Edit Asset'}
+				pageDescription={
+					action === 'add'
+						? 'Create a new asset and start tracking it'
+						: 'Update asset information and maintenance details'
+				}
+			/>
+
+			<Card className='mx-auto w-full max-w-2xl'>
+				<CardContent className='pt-6'>
+					<EquipmentForm
+						action={action}
+						equipment={equipment}
+					/>
+				</CardContent>
+			</Card>
 		</section>
 	);
 }
