@@ -21,12 +21,8 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 
-import {
-	ChartContainer,
-	ChartTooltip,
-	ChartTooltipContent
-} from '@/components/ui/chart';
-import { Pie, PieChart, Cell } from 'recharts';
+import { ChartContainer } from '@/components/ui/chart';
+import { ResponsiveContainer, Pie, PieChart, Cell, Tooltip } from 'recharts';
 
 function safeDate(value?: string) {
 	if (!value) return null;
@@ -41,6 +37,29 @@ function getNextServiceDate(eq: Equipment) {
 	const last = safeDate(eq.lastServiceDate);
 	if (!last) return null;
 	return addDays(last, 180);
+}
+
+function StatusTooltip({
+	active,
+	payload
+}: {
+	active?: boolean;
+	payload?: any[];
+}) {
+	if (!active || !payload?.length) return null;
+
+	const item = payload[0];
+	const label = item?.name ?? '—';
+	const value = item?.value ?? '—';
+
+	return (
+		<div className='rounded-md border bg-background px-3 py-2 text-xs shadow-sm max-w-[220px]'>
+			<div className='font-medium truncate'>{String(label)}</div>
+			<div className='text-muted-foreground'>
+				<span className='font-medium text-foreground'>{value}</span> assets
+			</div>
+		</div>
+	);
 }
 
 export default function DashboardPage() {
@@ -67,13 +86,13 @@ export default function DashboardPage() {
 			(e) => e.status === 'maintenance'
 		).length;
 
-		// Data Quality (production-friendly, based on existing fields)
 		const withSerial = equipments.filter((e) =>
 			Boolean(e.serialNumber?.trim())
 		).length;
 		const withLastService = equipments.filter((e) =>
 			Boolean(e.lastServiceDate?.trim())
 		).length;
+
 		const quality =
 			total === 0
 				? 0
@@ -91,7 +110,6 @@ export default function DashboardPage() {
 			if (!next) continue;
 
 			if (isBefore(next, today)) overdue += 1;
-
 			if (isWithinInterval(next, { start: today, end: in7 })) due7 += 1;
 			if (isWithinInterval(next, { start: today, end: in30 })) due30 += 1;
 
@@ -124,9 +142,9 @@ export default function DashboardPage() {
 
 	const statusChartData = useMemo(
 		() => [
-			{ status: 'active', count: metrics.active },
-			{ status: 'maintenance', count: metrics.maintenance },
-			{ status: 'inactive', count: metrics.inactive }
+			{ status: 'In Service', count: metrics.active, color: '#22c55e' },
+			{ status: 'Maintenance', count: metrics.maintenance, color: '#eab308' },
+			{ status: 'Out of Service', count: metrics.inactive, color: '#ef4444' }
 		],
 		[metrics.active, metrics.maintenance, metrics.inactive]
 	);
@@ -272,7 +290,7 @@ export default function DashboardPage() {
 										href='/equipments'
 									/>
 									<PriorityRow
-										label={`Service policy: every 180 days`}
+										label='Service policy: every 180 days'
 										tone='ok'
 										href='/analytics'
 									/>
@@ -281,33 +299,45 @@ export default function DashboardPage() {
 						</CardContent>
 					</Card>
 
-					<Card>
+					<Card className='min-w-0'>
 						<CardHeader>
 							<CardTitle>Assets by Status</CardTitle>
 						</CardHeader>
-						<CardContent>
+						<CardContent className='overflow-hidden'>
 							<ChartContainer
 								config={{
-									active: { label: 'In Service', color: '#22c55e' },
-									maintenance: { label: 'Maintenance', color: '#eab308' },
-									inactive: { label: 'Out of Service', color: '#ef4444' }
+									'In Service': { label: 'In Service', color: '#22c55e' },
+									Maintenance: { label: 'Maintenance', color: '#eab308' },
+									'Out of Service': {
+										label: 'Out of Service',
+										color: '#ef4444'
+									}
 								}}
-								className='h-[260px]'
+								className='h-[260px] w-full'
 							>
-								<PieChart>
-									<Pie
-										data={statusChartData}
-										dataKey='count'
-										nameKey='status'
-										innerRadius={55}
-										outerRadius={90}
-									>
-										<Cell fill='#22c55e' />
-										<Cell fill='#eab308' />
-										<Cell fill='#ef4444' />
-									</Pie>
-									<ChartTooltip content={<ChartTooltipContent />} />
-								</PieChart>
+								<ResponsiveContainer
+									width='100%'
+									height='100%'
+								>
+									<PieChart>
+										<Pie
+											data={statusChartData}
+											dataKey='count'
+											nameKey='status'
+											innerRadius={55}
+											outerRadius={90}
+										>
+											{statusChartData.map((d) => (
+												<Cell
+													key={d.status}
+													fill={d.color}
+												/>
+											))}
+										</Pie>
+
+										<Tooltip content={<StatusTooltip />} />
+									</PieChart>
+								</ResponsiveContainer>
 							</ChartContainer>
 
 							{!isLoading && metrics.total === 0 && (
@@ -443,18 +473,25 @@ function KpiCard({
 	badgeVariant?: 'default' | 'secondary' | 'destructive' | 'outline';
 }) {
 	return (
-		<Card className='lg:col-span-1'>
+		<Card className='lg:col-span-1 min-w-0'>
 			<CardHeader className='space-y-1'>
 				<div className='flex items-center justify-between text-sm text-muted-foreground'>
-					<span>{title}</span>
+					<span className='truncate'>{title}</span>
 					{icon}
 				</div>
 				<div className='text-2xl font-semibold'>{value}</div>
 			</CardHeader>
-			<CardContent className='flex items-center justify-between gap-2'>
-				<p className='text-xs text-muted-foreground'>{footer}</p>
+
+			{/* FIX: mobile quebra sem destruir layout */}
+			<CardContent className='flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between'>
+				<p className='text-xs text-muted-foreground truncate'>{footer}</p>
 				{badge ? (
-					<Badge variant={badgeVariant ?? 'secondary'}>{badge}</Badge>
+					<Badge
+						variant={badgeVariant ?? 'secondary'}
+						className='w-fit shrink-0'
+					>
+						{badge}
+					</Badge>
 				) : null}
 			</CardContent>
 		</Card>
