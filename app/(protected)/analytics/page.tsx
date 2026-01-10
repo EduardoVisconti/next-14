@@ -38,11 +38,7 @@ import {
 	SelectValue
 } from '@/components/ui/select';
 
-import {
-	ChartContainer,
-	ChartTooltip,
-	ChartTooltipContent
-} from '@/components/ui/chart';
+import { ChartContainer } from '@/components/ui/chart';
 
 import {
 	ResponsiveContainer,
@@ -55,7 +51,8 @@ import {
 	XAxis,
 	YAxis,
 	CartesianGrid,
-	Cell
+	Cell,
+	Tooltip
 } from 'recharts';
 
 /* ---------------------------------------
@@ -147,7 +144,7 @@ function KpiCard({
 				</div>
 				<div className='text-2xl font-semibold'>{value}</div>
 			</CardHeader>
-			<CardContent className='flex items-center justify-between gap-2'>
+			<CardContent className='flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between'>
 				{footer ? (
 					<p className='text-xs text-muted-foreground truncate'>{footer}</p>
 				) : (
@@ -156,13 +153,42 @@ function KpiCard({
 				{badge ? (
 					<Badge
 						variant={badgeVariant ?? 'secondary'}
-						className='shrink-0'
+						className='w-fit shrink-0'
 					>
 						{badge}
 					</Badge>
 				) : null}
 			</CardContent>
 		</Card>
+	);
+}
+
+/* ---------------------------------------
+   Compact tooltips (fixes “white giant box”)
+---------------------------------------- */
+
+function CompactTooltip({
+	active,
+	payload,
+	label
+}: {
+	active?: boolean;
+	payload?: any[];
+	label?: string;
+}) {
+	if (!active || !payload?.length) return null;
+
+	const item = payload[0];
+	const name = item?.name ?? label ?? '—';
+	const value = item?.value ?? '—';
+
+	return (
+		<div className='rounded-md border bg-background px-3 py-2 text-xs shadow-sm max-w-[220px]'>
+			<div className='font-medium truncate'>{String(name)}</div>
+			<div className='text-muted-foreground'>
+				<span className='font-medium text-foreground'>{value}</span> assets
+			</div>
+		</div>
 	);
 }
 
@@ -185,14 +211,14 @@ export default function AnalyticsPage() {
 	});
 
 	const today = new Date();
-	const rangeStart = useMemo(
-		() => subDays(today, Number(timeRange)),
-		[today, timeRange]
-	);
+
+	const rangeStart = useMemo(() => {
+		return subDays(today, Number(timeRange));
+	}, [today, timeRange]);
 
 	const filtered = useMemo(() => {
 		return equipments.filter((eq) => {
-			// Use purchaseDate as a proxy for createdAt (demo-friendly).
+			// purchaseDate as createdAt proxy
 			const created = safeDate(eq.purchaseDate);
 			const inRange =
 				!created ||
@@ -334,7 +360,6 @@ export default function AnalyticsPage() {
 				pageDescription='Operational insights, maintenance trends, and status distribution'
 			/>
 
-			{/* MATCH SITE PADDING + RHYTHM */}
 			<div className='p-4 md:p-6 space-y-6'>
 				{/* Toolbar */}
 				<div className='flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between'>
@@ -471,7 +496,8 @@ export default function AnalyticsPage() {
 								</Badge>
 							) : null}
 						</CardHeader>
-						<CardContent>
+
+						<CardContent className='overflow-hidden'>
 							<ChartContainer
 								config={{
 									active: { label: 'In Service', color: STATUS_COLORS.active },
@@ -484,7 +510,7 @@ export default function AnalyticsPage() {
 										color: STATUS_COLORS.inactive
 									}
 								}}
-								className='h-[280px] sm:h-[320px]'
+								className='h-[280px] sm:h-[320px] w-full'
 							>
 								<ResponsiveContainer
 									width='100%'
@@ -507,7 +533,8 @@ export default function AnalyticsPage() {
 												/>
 											))}
 										</Pie>
-										<ChartTooltip content={<ChartTooltipContent />} />
+
+										<Tooltip content={<CompactTooltip />} />
 									</PieChart>
 								</ResponsiveContainer>
 							</ChartContainer>
@@ -529,29 +556,38 @@ export default function AnalyticsPage() {
 								Status distribution
 							</CardTitle>
 						</CardHeader>
-						<CardContent>
+
+						<CardContent className='overflow-hidden'>
 							<ChartContainer
 								config={{
 									count: { label: 'Assets', color: '#3b82f6' }
 								}}
-								className='h-[280px] sm:h-[320px]'
+								className='h-[280px] sm:h-[320px] w-full'
 							>
 								<ResponsiveContainer
 									width='100%'
 									height='100%'
 								>
-									<BarChart data={statusChartData}>
+									<BarChart
+										data={statusChartData}
+										margin={{ top: 8, right: 8, left: 0, bottom: 0 }}
+									>
 										<CartesianGrid vertical={false} />
 										<XAxis
 											dataKey='label'
-											tickMargin={8}
+											tickMargin={10}
 											interval={0}
+											angle={-18}
+											textAnchor='end'
+											height={44}
 											tick={{ fontSize: 12 }}
 										/>
 										<YAxis allowDecimals={false} />
+
 										<Bar
 											dataKey='count'
 											radius={6}
+											activeBar={{ opacity: 0.85 }}
 										>
 											{statusChartData.map((entry) => (
 												<Cell
@@ -562,7 +598,11 @@ export default function AnalyticsPage() {
 												/>
 											))}
 										</Bar>
-										<ChartTooltip content={<ChartTooltipContent />} />
+
+										<Tooltip
+											cursor={false}
+											content={<CompactTooltip />}
+										/>
 									</BarChart>
 								</ResponsiveContainer>
 							</ChartContainer>
@@ -575,24 +615,35 @@ export default function AnalyticsPage() {
 					<CardHeader>
 						<CardTitle>Assets created over time</CardTitle>
 					</CardHeader>
-					<CardContent>
+
+					<CardContent className='overflow-hidden'>
 						<ChartContainer
 							config={{
 								total: { label: 'Assets', color: '#6366f1' }
 							}}
-							className='h-[320px] sm:h-[380px]'
+							className='h-[320px] sm:h-[380px] w-full'
 						>
 							<ResponsiveContainer
 								width='100%'
 								height='100%'
 							>
-								<AreaChart data={timeSeriesData}>
+								<AreaChart
+									data={timeSeriesData}
+									margin={{ top: 8, right: 8, left: 0, bottom: 0 }}
+								>
 									<CartesianGrid vertical={false} />
 									<XAxis
 										dataKey='month'
 										tickMargin={8}
+										interval='preserveStartEnd'
+										minTickGap={18}
+										tick={{ fontSize: 12 }}
 									/>
-									<YAxis allowDecimals={false} />
+									<YAxis
+										allowDecimals={false}
+										tick={{ fontSize: 12 }}
+									/>
+
 									<Area
 										dataKey='total'
 										type='monotone'
@@ -600,7 +651,8 @@ export default function AnalyticsPage() {
 										fill='#6366f1'
 										fillOpacity={0.22}
 									/>
-									<ChartTooltip content={<ChartTooltipContent />} />
+
+									<Tooltip content={<CompactTooltip />} />
 								</AreaChart>
 							</ResponsiveContainer>
 						</ChartContainer>
@@ -689,7 +741,7 @@ export default function AnalyticsPage() {
 										return (
 											<div
 												key={eq.id}
-												className='flex items-center justify-between gap-3 rounded-md border px-3 py-2'
+												className='flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between rounded-md border px-3 py-2'
 											>
 												<div className='min-w-0'>
 													<div className='truncate text-sm font-medium'>
@@ -700,7 +752,7 @@ export default function AnalyticsPage() {
 													</div>
 												</div>
 
-												<div className='flex items-center gap-2'>
+												<div className='flex flex-wrap items-center gap-2'>
 													<StatusPill status={eq.status} />
 													<Badge
 														variant={overdue ? 'destructive' : 'secondary'}
