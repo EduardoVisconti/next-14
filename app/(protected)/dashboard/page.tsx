@@ -313,29 +313,24 @@ export default function DashboardPage() {
 								}}
 								className='h-[260px] w-full'
 							>
-								<ResponsiveContainer
-									width='100%'
-									height='100%'
-								>
-									<PieChart>
-										<Pie
-											data={statusChartData}
-											dataKey='count'
-											nameKey='status'
-											innerRadius={55}
-											outerRadius={90}
-										>
-											{statusChartData.map((d) => (
-												<Cell
-													key={d.status}
-													fill={d.color}
-												/>
-											))}
-										</Pie>
+								<PieChart>
+									<Pie
+										data={statusChartData}
+										dataKey='count'
+										nameKey='status'
+										innerRadius={55}
+										outerRadius={90}
+									>
+										{statusChartData.map((d) => (
+											<Cell
+												key={d.status}
+												fill={d.color}
+											/>
+										))}
+									</Pie>
 
-										<Tooltip content={<StatusTooltip />} />
-									</PieChart>
-								</ResponsiveContainer>
+									<Tooltip content={<StatusTooltip />} />
+								</PieChart>
 							</ChartContainer>
 
 							{!isLoading && metrics.total === 0 && (

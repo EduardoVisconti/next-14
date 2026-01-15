@@ -9,7 +9,9 @@ import {
 	isBefore,
 	isWithinInterval,
 	parseISO,
-	subDays
+	subDays,
+	format,
+	eachMonthOfInterval
 } from 'date-fns';
 import {
 	AlertTriangle,
@@ -41,7 +43,6 @@ import {
 import { ChartContainer } from '@/components/ui/chart';
 
 import {
-	ResponsiveContainer,
 	Pie,
 	PieChart,
 	Bar,
@@ -197,7 +198,7 @@ function CompactTooltip({
 ---------------------------------------- */
 
 export default function AnalyticsPage() {
-	const [timeRange, setTimeRange] = useState<TimeRange>('90');
+	const [timeRange, setTimeRange] = useState<TimeRange>('365');
 	const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
 
 	const {
@@ -218,11 +219,19 @@ export default function AnalyticsPage() {
 
 	const filtered = useMemo(() => {
 		return equipments.filter((eq) => {
-			// purchaseDate as createdAt proxy
-			const created = safeDate(eq.purchaseDate);
+			const purchase = safeDate(eq.purchaseDate);
+			const last = safeDate(eq.lastServiceDate);
+			const next = deriveNextServiceDate(eq); // já trata nextServiceDate OU last+180
+
+			const candidates = [purchase, last, next].filter(Boolean) as Date[];
+
+			// Se não tiver nenhuma data válida, não exclui do analytics (evita sumir tudo)
 			const inRange =
-				!created ||
-				isWithinInterval(created, { start: rangeStart, end: today });
+				candidates.length === 0
+					? true
+					: candidates.some((d) =>
+							isWithinInterval(d, { start: rangeStart, end: today })
+					  );
 
 			const statusOk =
 				statusFilter === 'all' ? true : eq.status === statusFilter;
@@ -295,17 +304,28 @@ export default function AnalyticsPage() {
 	}, [filtered, today]);
 
 	const timeSeriesData = useMemo(() => {
-		const monthlyCounts = filtered.reduce((acc, eq) => {
+		// Janela fixa de 12 meses (mais “dashboard real”)
+		const start = subDays(today, 365);
+
+		// cria lista YYYY-MM contínua mês a mês
+		const months = eachMonthOfInterval({ start, end: today }).map((d) =>
+			format(d, 'yyyy-MM')
+		);
+
+		// conta assets por mês
+		const counts = filtered.reduce((acc, eq) => {
 			const month = eq.purchaseDate?.slice(0, 7); // YYYY-MM
 			if (!month) return acc;
 			acc[month] = (acc[month] || 0) + 1;
 			return acc;
 		}, {} as Record<string, number>);
 
-		return Object.entries(monthlyCounts)
-			.sort(([a], [b]) => a.localeCompare(b))
-			.map(([month, total]) => ({ month, total }));
-	}, [filtered]);
+		// preenche meses faltantes com 0 (visual profissional)
+		return months.map((month) => ({
+			month,
+			total: counts[month] ?? 0
+		}));
+	}, [filtered, today]);
 
 	const insights = useMemo(() => {
 		if (kpis.total === 0) return [];
@@ -512,31 +532,26 @@ export default function AnalyticsPage() {
 								}}
 								className='h-[280px] sm:h-[320px] w-full'
 							>
-								<ResponsiveContainer
-									width='100%'
-									height='100%'
-								>
-									<PieChart>
-										<Pie
-											data={statusChartData}
-											dataKey='count'
-											nameKey='label'
-											innerRadius={55}
-											outerRadius={90}
-										>
-											{statusChartData.map((entry) => (
-												<Cell
-													key={entry.status}
-													fill={
-														STATUS_COLORS[entry.status as Equipment['status']]
-													}
-												/>
-											))}
-										</Pie>
+								<PieChart>
+									<Pie
+										data={statusChartData}
+										dataKey='count'
+										nameKey='label'
+										innerRadius={55}
+										outerRadius={90}
+									>
+										{statusChartData.map((entry) => (
+											<Cell
+												key={entry.status}
+												fill={
+													STATUS_COLORS[entry.status as Equipment['status']]
+												}
+											/>
+										))}
+									</Pie>
 
-										<Tooltip content={<CompactTooltip />} />
-									</PieChart>
-								</ResponsiveContainer>
+									<Tooltip content={<CompactTooltip />} />
+								</PieChart>
 							</ChartContainer>
 
 							{!isLoading && kpis.total === 0 ? (
@@ -564,47 +579,42 @@ export default function AnalyticsPage() {
 								}}
 								className='h-[280px] sm:h-[320px] w-full'
 							>
-								<ResponsiveContainer
-									width='100%'
-									height='100%'
+								<BarChart
+									data={statusChartData}
+									margin={{ top: 8, right: 8, left: 0, bottom: 0 }}
 								>
-									<BarChart
-										data={statusChartData}
-										margin={{ top: 8, right: 8, left: 0, bottom: 0 }}
+									<CartesianGrid vertical={false} />
+									<XAxis
+										dataKey='label'
+										tickMargin={10}
+										interval={0}
+										angle={-18}
+										textAnchor='end'
+										height={44}
+										tick={{ fontSize: 12 }}
+									/>
+									<YAxis allowDecimals={false} />
+
+									<Bar
+										dataKey='count'
+										radius={6}
+										activeBar={{ opacity: 0.85 }}
 									>
-										<CartesianGrid vertical={false} />
-										<XAxis
-											dataKey='label'
-											tickMargin={10}
-											interval={0}
-											angle={-18}
-											textAnchor='end'
-											height={44}
-											tick={{ fontSize: 12 }}
-										/>
-										<YAxis allowDecimals={false} />
+										{statusChartData.map((entry) => (
+											<Cell
+												key={entry.status}
+												fill={
+													STATUS_COLORS[entry.status as Equipment['status']]
+												}
+											/>
+										))}
+									</Bar>
 
-										<Bar
-											dataKey='count'
-											radius={6}
-											activeBar={{ opacity: 0.85 }}
-										>
-											{statusChartData.map((entry) => (
-												<Cell
-													key={entry.status}
-													fill={
-														STATUS_COLORS[entry.status as Equipment['status']]
-													}
-												/>
-											))}
-										</Bar>
-
-										<Tooltip
-											cursor={false}
-											content={<CompactTooltip />}
-										/>
-									</BarChart>
-								</ResponsiveContainer>
+									<Tooltip
+										cursor={false}
+										content={<CompactTooltip />}
+									/>
+								</BarChart>
 							</ChartContainer>
 						</CardContent>
 					</Card>
@@ -623,38 +633,34 @@ export default function AnalyticsPage() {
 							}}
 							className='h-[320px] sm:h-[380px] w-full'
 						>
-							<ResponsiveContainer
-								width='100%'
-								height='100%'
+							<AreaChart
+								data={timeSeriesData}
+								margin={{ top: 8, right: 8, left: 0, bottom: 0 }}
 							>
-								<AreaChart
-									data={timeSeriesData}
-									margin={{ top: 8, right: 8, left: 0, bottom: 0 }}
-								>
-									<CartesianGrid vertical={false} />
-									<XAxis
-										dataKey='month'
-										tickMargin={8}
-										interval='preserveStartEnd'
-										minTickGap={18}
-										tick={{ fontSize: 12 }}
-									/>
-									<YAxis
-										allowDecimals={false}
-										tick={{ fontSize: 12 }}
-									/>
+								<CartesianGrid vertical={false} />
+								<XAxis
+									dataKey='month'
+									tickMargin={8}
+									tickFormatter={(value) => value.slice(5)} // mostra só MM (mais clean)
+									interval='preserveStartEnd'
+									minTickGap={18}
+								/>
+								<YAxis
+									allowDecimals={false}
+									tick={{ fontSize: 12 }}
+								/>
 
-									<Area
-										dataKey='total'
-										type='monotone'
-										stroke='#6366f1'
-										fill='#6366f1'
-										fillOpacity={0.22}
-									/>
+								<Area
+									dataKey='total'
+									type='monotone'
+									stroke='#6366f1'
+									fill='#6366f1'
+									fillOpacity={0.22}
+									dot={false}
+								/>
 
-									<Tooltip content={<CompactTooltip />} />
-								</AreaChart>
-							</ResponsiveContainer>
+								<Tooltip content={<CompactTooltip />} />
+							</AreaChart>
 						</ChartContainer>
 
 						{!isLoading && timeSeriesData.length === 0 ? (

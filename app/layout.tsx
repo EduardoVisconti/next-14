@@ -12,7 +12,6 @@ export const metadata: Metadata = {
 
 const inter = Inter({
 	subsets: ['latin'],
-	// Optional: define a CSS variable name for use with Tailwind CSS or CSS files
 	variable: '--font-inter'
 });
 
@@ -22,8 +21,11 @@ export default function RootLayout({
 	children: React.ReactNode;
 }>) {
 	return (
-		<html lang='en'>
-			<body className={`${inter.variable}  antialiased`}>
+		<html
+			lang='en'
+			suppressHydrationWarning
+		>
+			<body className={`${inter.variable} antialiased`}>
 				<AuthProvider>
 					<ThemeProvider
 						attribute='class'
@@ -33,6 +35,7 @@ export default function RootLayout({
 					>
 						{children}
 					</ThemeProvider>
+
 					<Toaster richColors />
 				</AuthProvider>
 			</body>
