@@ -48,7 +48,7 @@ const equipmentSchema = z
 
 		nextServiceDate: z.string().optional(),
 
-		serviceIntervalDays: z.number().int().min(1).default(180),
+		serviceIntervalDays: z.number().int().min(1).optional(),
 
 		location: z.string().optional(),
 		owner: z.string().optional()
