@@ -7,8 +7,9 @@ import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
+import { addDays, isAfter, isBefore, parseISO, format } from 'date-fns';
 
-import { Equipment } from '@/types/equipment';
+import type { Equipment } from '@/types/equipment';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -36,18 +37,57 @@ interface EquipmentFormProps {
 
 /* ---------------- SCHEMA ---------------- */
 
-const equipmentSchema = z.object({
-	name: z.string().min(1, 'Name is required'),
-	serialNumber: z.string().min(1, 'Serial number is required'),
-	status: z.enum(['active', 'inactive', 'maintenance']),
-	purchaseDate: z.string().min(1, 'Purchase date is required'),
-	lastServiceDate: z.string().min(1, 'Last service date is required'),
+const equipmentSchema = z
+	.object({
+		name: z.string().min(1, 'Name is required'),
+		serialNumber: z.string().min(1, 'Serial number is required'),
+		status: z.enum(['active', 'inactive', 'maintenance']),
 
-	// NEW
-	nextServiceDate: z.string().optional(),
-	location: z.string().optional(),
-	owner: z.string().optional()
-});
+		purchaseDate: z.string().min(1, 'Purchase date is required'),
+		lastServiceDate: z.string().min(1, 'Last service date is required'),
+
+		nextServiceDate: z.string().optional(),
+
+		serviceIntervalDays: z.number().int().min(1).default(180),
+
+		location: z.string().optional(),
+		owner: z.string().optional()
+	})
+	.superRefine((values, ctx) => {
+		const today = new Date();
+
+		const purchase = values.purchaseDate ? parseISO(values.purchaseDate) : null;
+		const last = values.lastServiceDate
+			? parseISO(values.lastServiceDate)
+			: null;
+		const next = values.nextServiceDate
+			? parseISO(values.nextServiceDate)
+			: null;
+
+		if (purchase && isAfter(purchase, today)) {
+			ctx.addIssue({
+				code: 'custom',
+				path: ['purchaseDate'],
+				message: 'Purchase date cannot be in the future'
+			});
+		}
+
+		if (last && isAfter(last, today)) {
+			ctx.addIssue({
+				code: 'custom',
+				path: ['lastServiceDate'],
+				message: 'Last service date cannot be in the future'
+			});
+		}
+
+		if (next && isBefore(next, today)) {
+			ctx.addIssue({
+				code: 'custom',
+				path: ['nextServiceDate'],
+				message: 'Next service date cannot be in the past'
+			});
+		}
+	});
 
 type EquipmentFormValues = z.infer<typeof equipmentSchema>;
 
@@ -63,16 +103,20 @@ export default function EquipmentForm({
 	const form = useForm<EquipmentFormValues>({
 		resolver: zodResolver(equipmentSchema),
 		defaultValues: {
-			name: equipment?.name || '',
-			serialNumber: equipment?.serialNumber || '',
-			status: equipment?.status || 'active',
-			purchaseDate: equipment?.purchaseDate || '',
-			lastServiceDate: equipment?.lastServiceDate || '',
+			name: equipment?.name ?? '',
+			serialNumber: equipment?.serialNumber ?? '',
+			status: equipment?.status ?? 'active',
+			purchaseDate: equipment?.purchaseDate ?? '',
+			lastServiceDate: equipment?.lastServiceDate ?? '',
 
-			nextServiceDate: equipment?.nextServiceDate || '',
-			location: equipment?.location || '',
-			owner: equipment?.owner || ''
-		}
+			nextServiceDate: equipment?.nextServiceDate ?? '',
+
+			serviceIntervalDays: equipment?.serviceIntervalDays ?? 180,
+
+			location: equipment?.location ?? '',
+			owner: equipment?.owner ?? ''
+		},
+		mode: 'onSubmit'
 	});
 
 	const createMutation = useMutation({
@@ -82,9 +126,7 @@ export default function EquipmentForm({
 			toast.success('Equipment created successfully');
 			router.push('/equipments');
 		},
-		onError: () => {
-			toast.error('Failed to create equipment');
-		}
+		onError: () => toast.error('Failed to create equipment')
 	});
 
 	const updateMutation = useMutation({
@@ -95,15 +137,22 @@ export default function EquipmentForm({
 			toast.success('Equipment updated successfully');
 			router.push('/equipments');
 		},
-		onError: () => {
-			toast.error('Failed to update equipment');
-		}
+		onError: () => toast.error('Failed to update equipment')
 	});
 
 	const isSaving =
 		action === 'add' ? createMutation.isPending : updateMutation.isPending;
 
-	async function onSubmit(values: EquipmentFormValues) {
+	function onSubmit(values: EquipmentFormValues) {
+		const interval = values.serviceIntervalDays ?? 180;
+
+		// ✅ se não preencher next, calcula automaticamente
+		let next = values.nextServiceDate?.trim();
+		if (!next && values.lastServiceDate) {
+			const computed = addDays(parseISO(values.lastServiceDate), interval);
+			next = format(computed, 'yyyy-MM-dd');
+		}
+
 		const payload: Omit<Equipment, 'id'> = {
 			name: values.name,
 			serialNumber: values.serialNumber,
@@ -111,24 +160,16 @@ export default function EquipmentForm({
 			purchaseDate: values.purchaseDate,
 			lastServiceDate: values.lastServiceDate,
 
-			nextServiceDate: values.nextServiceDate?.trim() || '',
-			location: values.location?.trim() || '',
-			owner: values.owner?.trim() || ''
+			nextServiceDate: next || undefined,
+			serviceIntervalDays: interval,
+
+			location: values.location?.trim() || undefined,
+			owner: values.owner?.trim() || undefined
 		};
 
-		if (!payload.nextServiceDate) delete payload.nextServiceDate;
-		if (!payload.location) delete payload.location;
-		if (!payload.owner) delete payload.owner;
-
-		if (action === 'add') {
-			createMutation.mutate(payload);
-		}
-
+		if (action === 'add') createMutation.mutate(payload);
 		if (action === 'edit' && equipment?.id) {
-			updateMutation.mutate({
-				id: equipment.id,
-				data: payload
-			});
+			updateMutation.mutate({ id: equipment.id, data: payload });
 		}
 	}
 
@@ -138,18 +179,25 @@ export default function EquipmentForm({
 				onSubmit={form.handleSubmit(onSubmit)}
 				className='space-y-6 max-w-xl'
 			>
-				{/* NAME */}
 				<FormField
 					control={form.control}
-					name='name'
+					name='serviceIntervalDays'
 					render={({ field }) => (
 						<FormItem>
-							<FormLabel>Name</FormLabel>
+							<FormLabel>Service Interval (days)</FormLabel>
 							<FormControl>
 								<Input
-									{...field}
-									placeholder='e.g. Forklift - Unit 12'
+									type='number'
+									min={1}
+									step={1}
 									disabled={isSaving}
+									value={field.value ?? 180}
+									onChange={(e) => {
+										const val = e.target.value;
+										// se apagar o input, mantém 180 (evita NaN)
+										if (val === '') return field.onChange(180);
+										field.onChange(Number(val));
+									}}
 								/>
 							</FormControl>
 							<FormMessage />
@@ -157,7 +205,6 @@ export default function EquipmentForm({
 					)}
 				/>
 
-				{/* SERIAL */}
 				<FormField
 					control={form.control}
 					name='serialNumber'
@@ -176,7 +223,6 @@ export default function EquipmentForm({
 					)}
 				/>
 
-				{/* STATUS */}
 				<FormField
 					control={form.control}
 					name='status'
@@ -185,7 +231,7 @@ export default function EquipmentForm({
 							<FormLabel>Status</FormLabel>
 							<Select
 								onValueChange={field.onChange}
-								defaultValue={field.value}
+								value={field.value}
 							>
 								<FormControl>
 									<SelectTrigger disabled={isSaving}>
@@ -203,7 +249,6 @@ export default function EquipmentForm({
 					)}
 				/>
 
-				{/* OWNER */}
 				<FormField
 					control={form.control}
 					name='owner'
@@ -222,7 +267,6 @@ export default function EquipmentForm({
 					)}
 				/>
 
-				{/* LOCATION */}
 				<FormField
 					control={form.control}
 					name='location'
@@ -241,7 +285,6 @@ export default function EquipmentForm({
 					)}
 				/>
 
-				{/* PURCHASE DATE */}
 				<FormField
 					control={form.control}
 					name='purchaseDate'
@@ -260,7 +303,6 @@ export default function EquipmentForm({
 					)}
 				/>
 
-				{/* LAST SERVICE DATE */}
 				<FormField
 					control={form.control}
 					name='lastServiceDate'
@@ -279,7 +321,6 @@ export default function EquipmentForm({
 					)}
 				/>
 
-				{/* NEXT SERVICE DATE */}
 				<FormField
 					control={form.control}
 					name='nextServiceDate'
@@ -298,6 +339,25 @@ export default function EquipmentForm({
 					)}
 				/>
 
+				<FormField
+					control={form.control}
+					name='serviceIntervalDays'
+					render={({ field }) => (
+						<FormItem>
+							<FormLabel>Service Interval (days)</FormLabel>
+							<FormControl>
+								<Input
+									type='number'
+									min={1}
+									disabled={isSaving}
+									{...field}
+								/>
+							</FormControl>
+							<FormMessage />
+						</FormItem>
+					)}
+				/>
+
 				<Button
 					type='submit'
 					disabled={isSaving}
@@ -307,8 +367,8 @@ export default function EquipmentForm({
 							? 'Creating...'
 							: 'Updating...'
 						: action === 'add'
-						? 'Create Equipment'
-						: 'Update Equipment'}
+						? 'Create Asset'
+						: 'Update Asset'}
 				</Button>
 			</form>
 		</Form>
