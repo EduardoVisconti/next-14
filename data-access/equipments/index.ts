@@ -125,11 +125,7 @@ function maintenanceCollection(equipmentId: string) {
 export const getMaintenanceHistory = async (
 	equipmentId: string
 ): Promise<MaintenanceRecord[]> => {
-	const q = query(
-		maintenanceCollection(equipmentId),
-		orderBy('date', 'desc'),
-		orderBy('createdAt', 'desc')
-	);
+	const q = query(maintenanceCollection(equipmentId), orderBy('date', 'desc'));
 
 	const snapshot = await getDocs(q);
 
